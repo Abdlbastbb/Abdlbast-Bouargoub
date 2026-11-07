@@ -1,0 +1,6 @@
+{
+  "name": "NEXUS ONE — Premium Cinematic Video Player",
+  "description": "The Living Frame. Beyond Watching. Into Feeling. An award-winning cinematic video player powered by Video.js v10 with reactive ambient illumination, precision timeline, and Mux stream integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
