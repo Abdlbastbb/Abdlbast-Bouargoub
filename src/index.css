@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "video.js/dist/video-js.css";
+@import "@videojs/react/video/skin.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -8,39 +8,51 @@
   --font-display: "Syne", "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --color-obsidian: #090B0F;
-  --color-obsidian-card: #0F1218;
-  --color-obsidian-subtle: #171B24;
-  --color-obsidian-border: rgba(242, 240, 233, 0.08);
-  --color-ivory: #F2F0E9;
-  --color-ivory-muted: rgba(242, 240, 233, 0.65);
-  --color-vermilion: #FF5638;
-  --color-vermilion-glow: rgba(255, 86, 56, 0.35);
+  /* NEXUS ONE Signature Visual Identity Palette */
+  --color-obsidian: #080A0D;
+  --color-graphite: #141920;
+  --color-graphite-card: #10141A;
+  --color-graphite-elevated: #181E27;
+  --color-graphite-border: rgba(197, 203, 210, 0.12);
+  --color-titanium: #C5CBD2;
+  --color-titanium-muted: rgba(197, 203, 210, 0.65);
+  --color-ivory: #F1F0EA;
+  --color-ivory-dim: rgba(241, 240, 234, 0.75);
+  --color-solar: #FF704F;
+  --color-solar-glow: rgba(255, 112, 79, 0.25);
 }
 
-/* Custom living frame aura and film grain */
+/* Base Body Styling */
+body {
+  background-color: #080A0D;
+  color: #F1F0EA;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* The Living Frame Specular Ambient Aura (Restrained & Sophisticated) */
 .living-frame-aura {
-  transition: box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s ease;
+  transition: box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s ease;
 }
 
 .living-frame-aura.glow-active {
-  box-shadow: 0 0 80px -15px var(--glow-color, rgba(255, 86, 56, 0.35)),
-              0 25px 50px -12px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 60px -10px var(--glow-color, rgba(255, 112, 79, 0.22)),
+              0 25px 50px -15px rgba(0, 0, 0, 0.95);
 }
 
-/* Cinematic film grain overlay */
+/* Subtle Cinematic Film Grain Overlay (Celluloid Mode) */
 .film-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
 }
 
-/* Custom range slider styling for audio and timeline */
+/* Custom Range Slider Styling with Solar Orange Accent */
 input[type="range"]::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 9999px;
-  background: #FF5638;
-  box-shadow: 0 0 10px rgba(255, 86, 56, 0.6);
+  background: #FF704F;
+  box-shadow: 0 0 8px rgba(255, 112, 79, 0.6);
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -49,17 +61,26 @@ input[type="range"]:hover::-webkit-slider-thumb {
   transform: scale(1.25);
 }
 
-/* Hide default video.js control bar so our custom cinematic HUD takes full control */
-.video-js.nexus-video-js .vjs-control-bar {
-  display: none !important;
-}
-
-.video-js.nexus-video-js {
+/* Video.js v10 VideoSkin integration & avoiding duplicate controls */
+.video-skin {
   width: 100% !important;
   height: 100% !important;
+  position: relative !important;
   background-color: transparent !important;
 }
 
-.video-js.nexus-video-js video {
+.video-skin video {
+  width: 100% !important;
+  height: 100% !important;
   object-fit: contain;
+}
+
+/* Suppress default VideoSkin controls so our custom LivingFrameHUD has exclusive, pristine control */
+.video-skin media-controls,
+.video-skin .video-controls,
+.video-skin .video-controls-content,
+.video-skin .video-controls-backdrop,
+.video-skin .media-controls,
+.video-skin [data-part="controls"] {
+  display: none !important;
 }
