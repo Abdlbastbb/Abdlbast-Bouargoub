@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CINEMA_REELS, FilmReel } from './data/cinemaReels';
 import { AspectRatio } from './utils/player-math';
 import { CinemaHeader } from './components/CinemaHeader';
 import { NexusVideoPlayer } from './components/NexusVideoPlayer';
 import { FilmSelectorStrip } from './components/FilmSelectorStrip';
 import { CinematicFeaturesSection } from './components/CinematicFeaturesSection';
-import { LogoIntegrationModal } from './components/BrandLogoManager';
 import { MuxStreamModal } from './components/MuxStreamModal';
 import { TechnicalInspectorModal } from './components/TechnicalInspectorModal';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NexusBrandMark } from './components/NexusBrandMark';
+
+const COLOR_LOOKS: { value: 'pristine' | 'celluloid' | 'noir' | 'vermilion'; label: string }[] = [
+  { value: 'pristine', label: 'Natural' },
+  { value: 'celluloid', label: 'Film' },
+  { value: 'noir', label: 'Monochrome' },
+  { value: 'vermilion', label: 'Cobalt' },
+];
 
 export default function App() {
   const [activeFilm, setActiveFilm] = useState<FilmReel>(CINEMA_REELS[0]);
@@ -18,11 +24,11 @@ export default function App() {
   const [activeAspectRatio, setActiveAspectRatio] = useState<AspectRatio>(CINEMA_REELS[0].aspectRatio);
   const [activeColorGrade, setActiveColorGrade] = useState<'pristine' | 'celluloid' | 'noir' | 'vermilion'>('pristine');
 
-  // Modal States
-  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+  // Modal States (Logo replacement UI permanently removed)
   const [isStreamModalOpen, setIsStreamModalOpen] = useState(false);
   const [isInspectorModalOpen, setIsInspectorModalOpen] = useState(false);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const [autoPlayToken, setAutoPlayToken] = useState(0);
 
   // Real-time telemetry from Video.js player
   const [videoTelemetry, setVideoTelemetry] = useState<any>({
@@ -39,95 +45,135 @@ export default function App() {
     videoJsVersion: '10.3.0',
   });
 
-  const handleSelectFilm = (film: FilmReel) => {
+  // Global '?' shortcut to open Keyboard Shortcuts Guide & 'Escape' to close modals
+  useEffect(() => {
+    const onQuestionShortcut = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setIsStreamModalOpen(false);
+        setIsInspectorModalOpen(false);
+        setIsShortcutsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onQuestionShortcut);
+    return () => window.removeEventListener('keydown', onQuestionShortcut);
+  }, []);
+
+  const handleSelectFilm = useCallback((film: FilmReel) => {
     setActiveFilm(film);
     setActiveAspectRatio(film.aspectRatio);
     setActiveColorGrade(film.colorGrade);
-  };
+    setAutoPlayToken((n) => n + 1);
+  }, []);
 
-  const handleLoadCustomStream = (customFilm: FilmReel) => {
+  const handleLoadCustomStream = useCallback((customFilm: FilmReel) => {
     setActiveFilm(customFilm);
     setActiveAspectRatio(customFilm.aspectRatio);
-  };
+    setAutoPlayToken((n) => n + 1);
+  }, []);
+
+  const handleToggleAmbientAura = useCallback(() => {
+    setAmbientAuraActive((prev) => !prev);
+  }, []);
+
+  const handleToggleCinemaDim = useCallback(() => {
+    setCinemaDimActive((prev) => !prev);
+  }, []);
+
+  const handleOpenStreamManager = useCallback(() => {
+    setIsStreamModalOpen(true);
+  }, []);
+
+  const handleCloseStreamManager = useCallback(() => {
+    setIsStreamModalOpen(false);
+  }, []);
+
+  const handleOpenInspector = useCallback(() => {
+    setIsInspectorModalOpen(true);
+  }, []);
+
+  const handleCloseInspector = useCallback(() => {
+    setIsInspectorModalOpen(false);
+  }, []);
+
+  const handleOpenShortcuts = useCallback(() => {
+    setIsShortcutsModalOpen(true);
+  }, []);
+
+  const handleCloseShortcuts = useCallback(() => {
+    setIsShortcutsModalOpen(false);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#080A0D] text-[#F1F0EA] flex flex-col font-['Space_Grotesk',sans-serif] selection:bg-[#FF704F]/30 selection:text-[#F1F0EA]">
-      {/* Subtle ambient specular light wash */}
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(255,112,79,0.06),transparent)]" />
+    <div className="min-h-screen bg-[#05070B] text-[#FFFFFF] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#67D4FF]/25 selection:text-[#FFFFFF] overflow-x-clip">
+      {/* Subtle Light Electric Blue top atmospheric wash */}
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_45%_at_50%_0%,rgba(103,212,255,0.065),transparent)]" />
 
       {/* Top Navigation */}
       <CinemaHeader
-        onOpenStreamManager={() => setIsStreamModalOpen(true)}
-        onOpenLogoManager={() => setIsLogoModalOpen(true)}
-        onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
+        onOpenStreamManager={handleOpenStreamManager}
+        onOpenShortcuts={handleOpenShortcuts}
         cinemaDimActive={cinemaDimActive}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col">
         {/* Cinema Stage Section */}
-        <section id="cinema-stage" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 md:pt-10 pb-8">
-          {/* Header Tagline & Brand Concept */}
+        <section id="cinema-stage" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-7 sm:pt-9 md:pt-11 pb-8">
+          {/* Editorial Stage Header (No FPS/Resolution clutter) */}
           <div
-            className={`transition-all duration-500 mb-5 sm:mb-7 flex flex-col md:flex-row md:items-end justify-between gap-4 ${
+            className={`transition-all duration-500 mb-6 sm:mb-7 flex flex-col lg:flex-row lg:items-end justify-between gap-5 ${
               cinemaDimActive ? 'opacity-20 hover:opacity-100' : 'opacity-100'
             }`}
           >
             <div>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-[10px] sm:text-[11px] font-mono tracking-[0.22em] text-[#FF704F] uppercase">
-                  CINEMATIC INTELLIGENCE · THE LIVING FRAME
-                </span>
-                <span className="text-[#C5CBD2]/30">·</span>
-                <span className="text-[10px] sm:text-[11px] font-mono text-[#C5CBD2]/60 uppercase">
-                  {activeFilm.specs.resolution.split(' ')[0]} {activeFilm.specs.fps.split(' ')[0]} FPS
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl md:text-5xl font-black font-['Syne',sans-serif] tracking-tight text-[#F1F0EA] uppercase leading-tight">
-                BEYOND WATCHING.<br />
-                <span className="text-[#FF704F]">INTO FEELING.</span>
+              <span className="text-xs font-medium tracking-[0.16em] text-[#67D4FF] uppercase block mb-2">
+                The Living Frame
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-[52px] font-extrabold font-['Syne',sans-serif] tracking-[-0.025em] text-[#FFFFFF] leading-[1.06] text-balance">
+                Beyond Watching.
+                <br />
+                <span className="text-[#67D4FF]">Into Feeling.</span>
               </h1>
             </div>
 
-            {/* Quick Cinema Controls Strip */}
-            <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
+            {/* Clean Stage Controls: Cinema Dim & Color Look */}
+            <div className="flex items-center flex-wrap gap-2.5 text-xs">
               <button
+                type="button"
                 onClick={() => setCinemaDimActive(!cinemaDimActive)}
-                className={`px-3 py-1.5 rounded-lg border transition-all ${
+                className={`px-3.5 py-2 rounded-xl border font-medium transition-all cursor-pointer ${
                   cinemaDimActive
-                    ? 'bg-[#FF704F] text-white border-[#FF704F] shadow-md shadow-[#FF704F]/25 font-semibold'
-                    : 'bg-[#141920] border-[rgba(197,203,210,0.14)] text-[#C5CBD2]/80 hover:text-white hover:border-[rgba(197,203,210,0.3)]'
+                    ? 'bg-[#67D4FF] text-[#05070B] border-[#67D4FF] shadow-md shadow-[#67D4FF]/20 font-semibold'
+                    : 'cinema-glass border-[rgba(226,232,240,0.14)] text-[#CBD5E1] hover:text-[#FFFFFF] hover:border-[rgba(103,212,255,0.4)]'
                 }`}
-                title="Dim outer lights for complete immersion"
+                title="Dim surrounding interface for cinema focus (C)"
               >
-                Cinema Dim: {cinemaDimActive ? 'Active' : 'Off'}
+                {cinemaDimActive ? 'Cinema Dim: On' : 'Cinema Dim'}
               </button>
 
-              <button
-                onClick={() => setAmbientAuraActive(!ambientAuraActive)}
-                className={`px-3 py-1.5 rounded-lg border transition-all ${
-                  ambientAuraActive
-                    ? 'bg-[#FF704F]/20 border-[#FF704F] text-[#FF704F] font-semibold'
-                    : 'bg-[#141920] border-[rgba(197,203,210,0.14)] text-[#C5CBD2]/80 hover:text-white hover:border-[rgba(197,203,210,0.3)]'
-                }`}
-                title="Toggle reactive ambient light bleed"
+              {/* Color Look Segmented Selector */}
+              <div
+                className="flex items-center rounded-xl cinema-glass border border-[rgba(226,232,240,0.14)] p-1 gap-0.5"
+                role="group"
+                aria-label="Color Grade Look"
               >
-                Aura: {ambientAuraActive ? 'On' : 'Off'}
-              </button>
-
-              {/* Color grading filter selector */}
-              <div className="flex items-center rounded-lg bg-[#141920] border border-[rgba(197,203,210,0.14)] p-0.5">
-                {(['pristine', 'celluloid', 'noir', 'vermilion'] as const).map((grade) => (
+                {COLOR_LOOKS.map((look) => (
                   <button
-                    key={grade}
-                    onClick={() => setActiveColorGrade(grade)}
-                    className={`px-2.5 py-1 rounded text-[11px] font-mono uppercase transition-colors ${
-                      activeColorGrade === grade
-                        ? 'bg-[#FF704F] text-white font-bold'
-                        : 'text-[#C5CBD2]/65 hover:text-white'
+                    type="button"
+                    key={look.value}
+                    onClick={() => setActiveColorGrade(look.value)}
+                    aria-pressed={activeColorGrade === look.value}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      activeColorGrade === look.value
+                        ? 'bg-[#67D4FF] text-[#05070B] font-semibold'
+                        : 'text-[#CBD5E1]/75 hover:text-[#FFFFFF]'
                     }`}
                   >
-                    {grade}
+                    {look.label}
                   </button>
                 ))}
               </div>
@@ -137,49 +183,53 @@ export default function App() {
           {/* The Living Frame Player */}
           <NexusVideoPlayer
             film={activeFilm}
+            autoPlayToken={autoPlayToken}
             ambientAuraActive={ambientAuraActive}
             cinemaDimActive={cinemaDimActive}
             activeAspectRatio={activeAspectRatio}
             activeColorGrade={activeColorGrade}
-            onToggleAmbientAura={() => setAmbientAuraActive(!ambientAuraActive)}
-            onToggleCinemaDim={() => setCinemaDimActive(!cinemaDimActive)}
+            onToggleAmbientAura={handleToggleAmbientAura}
+            onToggleCinemaDim={handleToggleCinemaDim}
             onAspectRatioChange={setActiveAspectRatio}
             onColorGradeChange={setActiveColorGrade}
-            onOpenInspector={() => setIsInspectorModalOpen(true)}
-            onOpenStreamManager={() => setIsStreamModalOpen(true)}
-            onOpenLogoManager={() => setIsLogoModalOpen(true)}
+            onOpenInspector={handleOpenInspector}
+            onOpenStreamManager={handleOpenStreamManager}
             onVideoStateUpdate={setVideoTelemetry}
           />
 
-          {/* Film Details & Metadata Strip */}
+          {/* Clean Active Film Details Strip */}
           <div
-            className={`mt-6 p-5 rounded-2xl bg-[#141920] border border-[rgba(197,203,210,0.12)] flex flex-col md:flex-row md:items-center justify-between gap-4 transition-opacity duration-500 ${
+            className={`mt-6 p-5 sm:p-6 rounded-2xl cinema-glass border border-[rgba(226,232,240,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4 transition-opacity duration-500 ${
               cinemaDimActive ? 'opacity-20 hover:opacity-100' : 'opacity-100'
             }`}
           >
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="font-['Syne',sans-serif] font-bold text-base text-[#F1F0EA]">
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="font-['Syne',sans-serif] font-bold text-base text-[#FFFFFF]">
                   {activeFilm.title}
                 </span>
-                <span className="text-[#C5CBD2]/30">·</span>
-                <span className="text-xs font-mono text-[#FF704F]">{activeFilm.director}</span>
+                <span className="text-[#94A3B8]/40" aria-hidden="true">·</span>
+                <span className="text-xs font-medium text-[#67D4FF]">{activeFilm.director}</span>
+                <span className="text-[#94A3B8]/40" aria-hidden="true">·</span>
+                <span className="text-xs font-mono text-[#94A3B8]">{activeAspectRatio}</span>
               </div>
-              <p className="text-xs text-[#C5CBD2]/75 max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-[13px] text-[#CBD5E1]/80 max-w-2xl leading-relaxed">
                 {activeFilm.synopsis}
               </p>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
+            <div className="flex items-center gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-white/5">
               <button
-                onClick={() => setIsInspectorModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg border border-[rgba(197,203,210,0.18)] hover:border-[rgba(197,203,210,0.35)] text-xs font-mono text-[#C5CBD2] hover:text-[#F1F0EA] bg-white/[0.03] transition-colors"
+                type="button"
+                onClick={handleOpenInspector}
+                className="px-3.5 py-2 rounded-xl border border-[rgba(226,232,240,0.16)] hover:border-[#67D4FF]/45 text-xs font-medium text-[#CBD5E1] hover:text-[#FFFFFF] bg-white/[0.03] transition-colors cursor-pointer"
               >
                 Inspect Telemetry
               </button>
               <button
-                onClick={() => setIsStreamModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-[#FF704F] text-white text-xs font-semibold hover:bg-[#FF704F]/90 transition-colors shadow-md shadow-[#FF704F]/20"
+                type="button"
+                onClick={handleOpenStreamManager}
+                className="px-4 py-2 rounded-xl bg-[#67D4FF] text-[#05070B] text-xs font-semibold hover:bg-[#8CE0FF] transition-colors shadow-md shadow-[#67D4FF]/15 cursor-pointer"
               >
                 Switch Stream
               </button>
@@ -187,7 +237,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Master Film Vault Strip */}
+        {/* Master Film Library */}
         <FilmSelectorStrip
           reels={CINEMA_REELS}
           activeFilm={activeFilm}
@@ -195,52 +245,52 @@ export default function App() {
           cinemaDimActive={cinemaDimActive}
         />
 
-        {/* Cinematic Features Bento */}
+        {/* Architecture Showcase */}
         <CinematicFeaturesSection
-          onOpenLogoManager={() => setIsLogoModalOpen(true)}
-          onOpenStreamManager={() => setIsStreamModalOpen(true)}
+          onOpenInspector={handleOpenInspector}
+          onOpenStreamManager={handleOpenStreamManager}
           cinemaDimActive={cinemaDimActive}
         />
       </main>
 
-      {/* Quiet Competition Footer */}
+      {/* Quiet Editorial Footer */}
       <footer
-        className={`w-full border-t border-[rgba(197,203,210,0.1)] bg-[#080A0D] py-8 transition-opacity duration-500 ${
+        className={`w-full border-t border-[rgba(226,232,240,0.1)] bg-[#05070B] py-8 transition-opacity duration-500 ${
           cinemaDimActive ? 'opacity-20 hover:opacity-100' : 'opacity-100'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#C5CBD2]/55">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#94A3B8]">
+          <div className="flex items-center flex-wrap justify-center gap-3">
             <NexusBrandMark variant="emblem" size="sm" />
-            <span className="font-['Syne',sans-serif] font-bold text-[#F1F0EA]">NEXUS ONE</span>
-            <span>·</span>
-            <span>CINEMATIC INTELLIGENCE</span>
-            <span>·</span>
-            <span>BEYOND WATCHING. INTO FEELING.</span>
+            <span className="font-['Syne',sans-serif] font-bold text-[#FFFFFF]">NEXUS ONE</span>
+            <span aria-hidden="true">·</span>
+            <span>Beyond Watching. Into Feeling.</span>
           </div>
 
           <div className="flex items-center gap-4">
-            <span>Powered by Video.js v10.3.0</span>
-            <span>·</span>
+            <span>Video.js Cinema Engine</span>
+            <span aria-hidden="true">·</span>
             <button
-              onClick={() => setIsShortcutsModalOpen(true)}
-              className="text-[#FF704F] hover:underline"
+              type="button"
+              onClick={handleOpenShortcuts}
+              className="text-[#67D4FF] hover:underline cursor-pointer"
             >
               Shortcuts Guide (?)
             </button>
           </div>
         </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-5 border-t border-[rgba(226,232,240,0.06)] text-center">
+          <p className="text-[11px] sm:text-xs tracking-[0.04em] text-[#CBD5E1]/70">
+            © 2026 NEXUS ONE — by Abdelbast Bouargoub
+          </p>
+        </div>
       </footer>
 
       {/* Modals */}
-      <LogoIntegrationModal
-        isOpen={isLogoModalOpen}
-        onClose={() => setIsLogoModalOpen(false)}
-      />
-
       <MuxStreamModal
         isOpen={isStreamModalOpen}
-        onClose={() => setIsStreamModalOpen(false)}
+        onClose={handleCloseStreamManager}
         activeFilm={activeFilm}
         onSelectFilm={handleSelectFilm}
         onLoadCustomStream={handleLoadCustomStream}
@@ -248,14 +298,14 @@ export default function App() {
 
       <TechnicalInspectorModal
         isOpen={isInspectorModalOpen}
-        onClose={() => setIsInspectorModalOpen(false)}
+        onClose={handleCloseInspector}
         film={activeFilm}
         videoState={videoTelemetry}
       />
 
       <KeyboardShortcutsModal
         isOpen={isShortcutsModalOpen}
-        onClose={() => setIsShortcutsModalOpen(false)}
+        onClose={handleCloseShortcuts}
       />
     </div>
   );

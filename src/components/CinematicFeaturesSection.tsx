@@ -3,131 +3,131 @@ import {
   Sparkles,
   Cpu,
   Radio,
-  Upload,
-  Layers,
+  Sliders,
   ArrowUpRight,
 } from 'lucide-react';
 
 interface CinematicFeaturesSectionProps {
-  onOpenLogoManager: () => void;
+  onOpenInspector: () => void;
   onOpenStreamManager: () => void;
   cinemaDimActive: boolean;
 }
 
 export function CinematicFeaturesSection({
-  onOpenLogoManager,
+  onOpenInspector,
   onOpenStreamManager,
   cinemaDimActive,
 }: CinematicFeaturesSectionProps) {
   return (
     <section
       id="architecture"
-      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 transition-opacity duration-500 ${
+      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-18 transition-opacity duration-500 ${
         cinemaDimActive ? 'opacity-20 hover:opacity-100' : 'opacity-100'
       }`}
     >
       {/* Editorial Headline */}
-      <div className="max-w-3xl mb-12">
-        <span className="text-[10px] font-mono tracking-[0.22em] text-[#FF704F] uppercase block mb-2">
-          CINEMATIC INTELLIGENCE · ARCHITECTURAL SYSTEM
+      <div className="max-w-3xl mb-10 sm:mb-12">
+        <span className="text-xs font-medium tracking-[0.14em] text-[#67D4FF] uppercase block mb-2">
+          Architecture
         </span>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-['Syne',sans-serif] text-[#F1F0EA] tracking-tight text-balance">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-['Syne',sans-serif] text-[#FFFFFF] tracking-tight text-balance">
           A New Visual Language for Experiencing Cinema
         </h2>
-        <p className="text-sm md:text-base text-[#C5CBD2]/75 mt-3 leading-relaxed">
-          NEXUS ONE departs radically from generic streaming templates. Built upon the official Video.js v10 media engine, it unifies edge-reactive specular illumination, precision time scrubbing, and instant Mux adaptive streaming into an uncompromised cinematic stage.
+        <p className="text-sm md:text-base text-[#CBD5E1]/80 mt-3 leading-relaxed">
+          NEXUS ONE pairs ambient edge illumination with frame-accurate scrubbing, cinema matte proportions, and adaptive Mux streaming on top of Video.js.
         </p>
       </div>
 
-      {/* Feature Bento Grid */}
+      {/* Editorial Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Card 1: The Living Frame Specular Bleed */}
-        <div className="md:col-span-2 rounded-2xl bg-[#141920] border border-[rgba(197,203,210,0.12)] p-6 md:p-8 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(197,203,210,0.25)] transition-all">
+        {/* Card 1 */}
+        <div className="md:col-span-2 rounded-2xl cinema-glass border border-[rgba(226,232,240,0.1)] p-6 md:p-8 flex flex-col justify-between relative overflow-hidden hover:border-[rgba(103,212,255,0.35)] transition-all">
           <div className="space-y-3 relative z-10">
-            <div className="w-10 h-10 rounded-xl bg-[#FF704F]/10 border border-[#FF704F]/25 flex items-center justify-center text-[#FF704F]">
+            <div className="w-10 h-10 rounded-xl bg-[#67D4FF]/10 border border-[#67D4FF]/25 flex items-center justify-center text-[#67D4FF]">
               <Sparkles className="w-5 h-5" />
             </div>
-            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#F1F0EA]">
+            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#FFFFFF]">
               01. The Living Frame Specular Bleed
             </h3>
-            <p className="text-xs md:text-sm text-[#C5CBD2]/75 leading-relaxed max-w-xl">
-              Rather than boxing cinema inside rigid borders, the Living Frame bleeds dynamic specular light directly into the Obsidian Black backdrop (#080A0D). When Cinema Dim mode is active, the interface vanishes into deep darkness, letting luminance and emotion command your visual field.
+            <p className="text-xs md:text-sm text-[#CBD5E1]/80 leading-relaxed max-w-xl">
+              Instead of confining cinema inside harsh borders, The Living Frame extends soft, calibrated ambient light into the surrounding darkness. Activate Cinema Dim to fade peripheral controls away while watching.
             </p>
           </div>
-          <div className="mt-6 pt-4 border-t border-white/5 flex items-center gap-3 text-xs font-mono text-[#C5CBD2]/50">
+          <div className="mt-6 pt-4 border-t border-white/5 flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
             <span>Adaptive Specular Light</span>
-            <span>·</span>
+            <span aria-hidden="true">·</span>
             <span>Cinema Dim Immersion</span>
-            <span>·</span>
+            <span aria-hidden="true">·</span>
             <span>Compositor Accelerated</span>
           </div>
         </div>
 
-        {/* Card 2: Dedicated Brand Architecture */}
-        <div className="rounded-2xl bg-[#141920] border border-[rgba(197,203,210,0.12)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(197,203,210,0.25)] transition-all">
+        {/* Card 2 */}
+        <div className="rounded-2xl cinema-glass border border-[rgba(226,232,240,0.1)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(103,212,255,0.35)] transition-all">
           <div className="space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FF704F]/10 border border-[#FF704F]/25 flex items-center justify-center text-[#FF704F]">
-              <Upload className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-[#67D4FF]/10 border border-[#67D4FF]/25 flex items-center justify-center text-[#67D4FF]">
+              <Sliders className="w-5 h-5" />
             </div>
-            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#F1F0EA]">
-              02. Brand Identity Architecture
+            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#FFFFFF]">
+              02. Anamorphic Framing & Diagnostics
             </h3>
-            <p className="text-xs md:text-sm text-[#C5CBD2]/75 leading-relaxed">
-              Designed with a dedicated logo integration area. You can upload and test your custom brand logo asset (PNG, SVG, WebP) with live scale, opacity, and blend mode calibration.
+            <p className="text-xs md:text-sm text-[#CBD5E1]/80 leading-relaxed">
+              Switch seamlessly between 2.39:1 Scope, 21:9 Ultrawide, 16:9 Theatrical, and 1.43:1 IMAX mattes while inspecting live buffer health and decode dimensions.
             </p>
           </div>
           <div className="mt-6 pt-4 border-t border-white/5">
             <button
-              onClick={onOpenLogoManager}
-              className="text-xs font-mono text-[#FF704F] hover:text-[#FF704F]/80 flex items-center gap-1 font-semibold group"
+              type="button"
+              onClick={onOpenInspector}
+              className="text-xs text-[#67D4FF] hover:text-[#8CE0FF] flex items-center gap-1 font-semibold group cursor-pointer"
             >
-              <span>Integrate Bespoke Logo</span>
+              <span>Inspect Stream Telemetry</span>
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>
         </div>
 
-        {/* Card 3: Video.js v10 Framework Engine */}
-        <div className="rounded-2xl bg-[#141920] border border-[rgba(197,203,210,0.12)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(197,203,210,0.25)] transition-all">
+        {/* Card 3 */}
+        <div className="rounded-2xl cinema-glass border border-[rgba(226,232,240,0.1)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(103,212,255,0.35)] transition-all">
           <div className="space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FF704F]/10 border border-[#FF704F]/25 flex items-center justify-center text-[#FF704F]">
+            <div className="w-10 h-10 rounded-xl bg-[#67D4FF]/10 border border-[#67D4FF]/25 flex items-center justify-center text-[#67D4FF]">
               <Cpu className="w-5 h-5" />
             </div>
-            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#F1F0EA]">
-              03. Video.js v10 Engine
+            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#FFFFFF]">
+              03. Video.js Cinema Engine
             </h3>
-            <p className="text-xs md:text-sm text-[#C5CBD2]/75 leading-relaxed">
-              Powered by actual Video.js v10.3.0 runtime. Lifecycle-managed React hooks ensure zero memory leaks, true HLS buffer metrics, hardware decoding, and instant time synchronization.
+            <p className="text-xs md:text-sm text-[#CBD5E1]/80 leading-relaxed">
+              Built on the Video.js React Skin architecture with lifecycle-managed refs for clean stream switching, responsive keyboard controls, and accurate time sync.
             </p>
           </div>
-          <div className="mt-6 pt-4 border-t border-white/5 text-xs font-mono text-[#C5CBD2]/70 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF704F]" />
-            <span>Official Video.js v10 Runtime</span>
+          <div className="mt-6 pt-4 border-t border-white/5 text-xs text-[#94A3B8]">
+            Hardware-Accelerated HTML5 Playback
           </div>
         </div>
 
-        {/* Card 4: Mux Video Infrastructure Integration */}
-        <div className="md:col-span-2 rounded-2xl bg-[#141920] border border-[rgba(197,203,210,0.12)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(197,203,210,0.25)] transition-all">
+        {/* Card 4 */}
+        <div className="md:col-span-2 rounded-2xl cinema-glass border border-[rgba(226,232,240,0.1)] p-6 md:p-8 flex flex-col justify-between hover:border-[rgba(103,212,255,0.35)] transition-all">
           <div className="space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FF704F]/10 border border-[#FF704F]/25 flex items-center justify-center text-[#FF704F]">
+            <div className="w-10 h-10 rounded-xl bg-[#67D4FF]/10 border border-[#67D4FF]/25 flex items-center justify-center text-[#67D4FF]">
               <Radio className="w-5 h-5" />
             </div>
-            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#F1F0EA]">
-              04. Mux Video Infrastructure Ready
+            <h3 className="text-lg md:text-xl font-bold font-['Syne',sans-serif] text-[#FFFFFF]">
+              04. Adaptive Mux HLS Streaming
             </h3>
-            <p className="text-xs md:text-sm text-[#C5CBD2]/75 leading-relaxed max-w-xl">
-              Architected for instant deployment with Mux. Enter any public Mux Playback ID to stream adaptive multi-bitrate HLS directly through the custom Video.js v10 player engine without external dependencies.
+            <p className="text-xs md:text-sm text-[#CBD5E1]/80 leading-relaxed max-w-xl">
+              Enter any public Mux Playback ID or direct media URL to stream adaptive multi-bitrate HLS and MP4 video directly inside The Living Frame.
             </p>
           </div>
           <div className="mt-6 pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-xs font-mono text-[#C5CBD2]/50 truncate">
-              https://stream.mux.com/&#123;PLAYBACK_ID&#125;.m3u8
-            </div>
+            <span className="text-xs text-[#94A3B8]">
+              Supports Mux HLS manifests and direct MP4/WebM feeds
+            </span>
             <button
+              type="button"
               onClick={onOpenStreamManager}
-              className="text-xs font-mono text-[#FF704F] hover:text-[#FF704F]/80 font-semibold flex items-center gap-1 group shrink-0"
+              className="text-xs text-[#67D4FF] hover:text-[#8CE0FF] font-semibold flex items-center gap-1 group shrink-0 cursor-pointer"
             >
-              <span>Test Mux Stream</span>
+              <span>Load Mux Stream</span>
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>

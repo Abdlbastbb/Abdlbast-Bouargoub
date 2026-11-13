@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FilmReel } from '../data/cinemaReels';
-import { Play, Check } from 'lucide-react';
+import { Play, Check, Film } from 'lucide-react';
 
 interface FilmSelectorStripProps {
   reels: FilmReel[];
@@ -15,97 +15,111 @@ export function FilmSelectorStrip({
   onSelectFilm,
   cinemaDimActive,
 }: FilmSelectorStripProps) {
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
   return (
     <section
       id="film-vault"
-      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-opacity duration-500 ${
+      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 transition-opacity duration-500 ${
         cinemaDimActive ? 'opacity-20 hover:opacity-100' : 'opacity-100'
       }`}
     >
-      {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 pb-3 border-b border-[rgba(197,203,210,0.1)]">
+      {/* Editorial Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-7 pb-4 border-b border-[rgba(226,232,240,0.1)]">
         <div>
-          <span className="text-[10px] font-mono tracking-[0.22em] text-[#FF704F] uppercase block mb-1">
-            MASTER REEL ARCHIVE
+          <span className="text-xs font-medium tracking-[0.14em] text-[#67D4FF] uppercase block mb-1.5">
+            Cinema Library
           </span>
-          <h2 className="text-xl sm:text-2xl font-bold font-['Syne',sans-serif] text-[#F1F0EA] tracking-tight">
-            Curated High-Dynamic-Range Cinema
+          <h2 className="text-xl sm:text-2xl font-bold font-['Syne',sans-serif] text-[#FFFFFF] tracking-tight">
+            Curated Master Reels
           </h2>
         </div>
-        <p className="text-xs font-mono text-[#C5CBD2]/60">
-          Direct stream switching · Video.js v10 media pipeline
+        <p className="text-xs text-[#94A3B8]">
+          Select any film to stream instantly inside The Living Frame
         </p>
       </div>
 
-      {/* Cinematic Film Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* Consistent 16:9 Film Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {reels.map((reel) => {
           const isActive = activeFilm.id === reel.id;
+          const imgFailed = failedImages[reel.id];
+
           return (
             <button
+              type="button"
               key={reel.id}
               onClick={() => onSelectFilm(reel)}
-              className={`group text-left rounded-2xl p-3 border transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
+              className={`group text-left rounded-2xl p-3 border transition-all duration-300 relative overflow-hidden flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#67D4FF] ${
                 isActive
-                  ? 'border-[#FF704F] bg-[#141920] shadow-[0_0_24px_rgba(255,112,79,0.18)]'
-                  : 'border-[rgba(197,203,210,0.12)] bg-[#10141A] hover:border-[rgba(197,203,210,0.3)] hover:bg-[#141920]'
+                  ? 'border-[#67D4FF] bg-[#0B0F17] shadow-[0_14px_34px_-14px_rgba(103,212,255,0.28)]'
+                  : 'border-[rgba(226,232,240,0.1)] bg-[#090D14] hover:border-[rgba(103,212,255,0.45)] hover:bg-[#0E1420] hover:-translate-y-0.5'
               }`}
               aria-label={`Select and stream ${reel.title} (${reel.durationString})`}
+              aria-pressed={isActive}
             >
-              {/* Media Thumbnail Container */}
-              <div className="aspect-video w-full rounded-xl overflow-hidden relative mb-3 bg-black/90">
-                <img
-                  src={reel.thumbnail}
-                  alt={reel.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080A0D]/90 via-[#080A0D]/30 to-transparent" />
+              {/* Clean 16:9 Cover Frame */}
+              <div className="aspect-video w-full rounded-xl overflow-hidden relative mb-3.5 bg-[#05070B] border border-white/5">
+                {!imgFailed ? (
+                  <img
+                    src={reel.thumbnail}
+                    alt={`${reel.title} — ${reel.subtitle}`}
+                    loading="lazy"
+                    onError={() =>
+                      setFailedImages((prev) => ({ ...prev, [reel.id]: true }))
+                    }
+                    className="w-full h-full object-cover object-center group-hover:scale-[1.035] transition-transform duration-500 ease-out"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0B0F17] via-[#111826] to-[#05070B] text-[#CBD5E1]/70 p-4">
+                    <Film className="w-6 h-6 text-[#67D4FF] mb-1.5" />
+                    <span className="text-xs font-['Syne',sans-serif] font-bold text-[#FFFFFF] text-center truncate w-full">
+                      {reel.title}
+                    </span>
+                  </div>
+                )}
 
-                {/* Top State Indicators */}
-                <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                  {/* Clean unboxed aspect ratio indicator */}
-                  <span className="text-[10px] font-mono bg-[#080A0D]/80 backdrop-blur-sm px-2 py-0.5 rounded text-[#F1F0EA] border border-white/10">
-                    {reel.aspectRatio}
-                  </span>
+                {/* Measured Scrim for Crisp Duration Legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#05070B]/90 via-transparent to-transparent pointer-events-none" />
 
+                {/* Top-Right Active / Hover Cue */}
+                <div className="absolute top-2.5 right-2.5">
                   {isActive ? (
-                    <span className="flex items-center gap-1 text-[10px] font-mono bg-[#FF704F] text-white px-2 py-0.5 rounded font-bold shadow-md tracking-wider">
-                      <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      <span>STREAMING</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] bg-[#67D4FF] text-[#05070B] px-2 py-0.5 rounded-md font-semibold shadow-md">
+                      <Check className="w-3 h-3 stroke-[2.75]" />
+                      <span>Playing</span>
                     </span>
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-[#080A0D]/75 border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                      <Play className="w-3 h-3 text-white fill-current ml-0.5" />
+                    <div className="w-8 h-8 rounded-full bg-[#0B0F17]/75 backdrop-blur-md border border-[#67D4FF]/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105 shadow-lg">
+                      <Play className="w-3.5 h-3.5 text-[#67D4FF] fill-current ml-0.5" />
                     </div>
                   )}
                 </div>
 
-                {/* Bottom Overlay Metrics */}
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-mono text-[#F1F0EA]">
-                  <span className="text-[#C5CBD2]/80">{reel.chapters.length} Scenes</span>
-                  <span className="text-[#FF704F] font-bold tabular-nums">{reel.durationString}</span>
+                {/* Bottom Duration & Scene Count */}
+                <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-[#FFFFFF]">
+                  <span className="text-[#CBD5E1] font-medium">{reel.chapters.length} Scenes</span>
+                  <span className="font-mono text-[#67D4FF] font-semibold tabular-nums">
+                    {reel.durationString}
+                  </span>
                 </div>
               </div>
 
-              {/* Title & Metadata Strip */}
-              <div className="space-y-1.5 flex-1 flex flex-col justify-between">
+              {/* Clean Title & Unboxed Editorial Metadata */}
+              <div className="space-y-1.5 flex-1 flex flex-col justify-between px-0.5">
                 <div>
-                  <h3 className="font-['Syne',sans-serif] font-bold text-sm text-[#F1F0EA] group-hover:text-[#FF704F] transition-colors truncate">
+                  <h3 className="font-['Syne',sans-serif] font-bold text-sm text-[#FFFFFF] group-hover:text-[#67D4FF] transition-colors truncate">
                     {reel.title}
                   </h3>
-                  <p className="text-xs text-[#C5CBD2]/65 line-clamp-1 mt-0.5">
+                  <p className="text-xs text-[#CBD5E1]/80 line-clamp-1 mt-0.5">
                     {reel.subtitle}
                   </p>
                 </div>
 
-                {/* Unboxed Metadata with Typographic Separator */}
-                <div className="text-[11px] font-mono text-[#C5CBD2]/45 pt-2 border-t border-white/5 flex items-center justify-between">
-                  <span>{reel.specs.resolution.split(' ')[0]}</span>
-                  <span>·</span>
-                  <span>{reel.specs.fps.split(' ')[0]} fps</span>
-                  <span>·</span>
-                  <span className="uppercase">{reel.colorGrade}</span>
+                <div className="text-[11px] text-[#94A3B8] pt-2.5 mt-1 border-t border-white/5 flex items-center justify-between gap-2">
+                  <span className="truncate">{reel.director}</span>
+                  <span className="font-mono shrink-0 text-[#CBD5E1]/75">{reel.aspectRatio}</span>
                 </div>
               </div>
             </button>

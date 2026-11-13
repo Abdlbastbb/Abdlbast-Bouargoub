@@ -8,11 +8,44 @@ export interface Chapter {
   thumbnail?: string;
 }
 
+export interface StreamResolutionResult {
+  url: string;
+  type: string;
+  isMux: boolean;
+  valid: boolean;
+  playbackId?: string;
+  token?: string;
+  tokenExpired?: boolean;
+  isAssetId?: boolean;
+  error?: string;
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MUX_PLAYBACK_ID_REGEX = /^[A-Za-z0-9]{8,64}$/;
+const UNSUPPORTED_EXTENSIONS = new Set([
+  '.mkv',
+  '.avi',
+  '.wmv',
+  '.flv',
+  '.mov',
+  '.ts',
+  '.mpd',
+  '.html',
+  '.htm',
+  '.json',
+  '.txt',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.svg',
+]);
+
 /**
  * Format seconds into cinematic HH:MM:SS or MM:SS
  */
 export function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return '00:00';
+  if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
   const totalSecs = Math.floor(seconds);
   const hrs = Math.floor(totalSecs / 3600);
   const mins = Math.floor((totalSecs % 3600) / 60);
@@ -30,54 +63,306 @@ export function formatTime(seconds: number): string {
  * Calculate buffer load percentage safely (0 - 100)
  */
 export function calculateBufferPercentage(bufferedEnd: number, duration: number): number {
-  if (!duration || isNaN(duration) || duration <= 0) return 0;
-  if (!bufferedEnd || isNaN(bufferedEnd) || bufferedEnd <= 0) return 0;
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+  if (!Number.isFinite(bufferedEnd) || bufferedEnd <= 0) return 0;
   const pct = (bufferedEnd / duration) * 100;
   return Math.min(100, Math.max(0, Math.round(pct * 10) / 10));
 }
 
 /**
- * Standardize Mux Playback ID or Direct Stream URL
+ * Safely inspect a JWT token payload (client-side only, without secrets) to detect expiration.
  */
-export function resolveStreamSource(input: string): { url: string; type: string; isMux: boolean } {
-  const trimmed = (input || '').trim();
-  if (!trimmed) {
-    return { url: '', type: 'video/mp4', isMux: false };
+export function inspectJwtToken(token: string): {
+  looksLikeJwt: boolean;
+  expired: boolean;
+  expiresAt?: number;
+} {
+  const clean = (token || '').trim();
+  const parts = clean.split('.');
+  if (parts.length !== 3) {
+    return { looksLikeJwt: false, expired: false };
   }
 
-  // If user pasted a Mux playback ID alone (alphanumeric ID usually 10-40 chars, no slashes or protocols)
-  if (!trimmed.includes('/') && !trimmed.includes('.') && trimmed.length >= 8) {
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const jsonStr =
+      typeof atob === 'function'
+        ? atob(padded)
+        : Buffer.from(padded, 'base64').toString('utf8');
+    const payload = JSON.parse(jsonStr);
+    if (typeof payload?.exp === 'number') {
+      const expiresAt = payload.exp * 1000;
+      return {
+        looksLikeJwt: true,
+        expired: expiresAt <= Date.now(),
+        expiresAt,
+      };
+    }
+    return { looksLikeJwt: true, expired: false };
+  } catch {
+    return { looksLikeJwt: false, expired: false };
+  }
+}
+
+/**
+ * Check whether an identifier looks like a Mux Asset ID instead of a Playback ID.
+ */
+export function isLikelyMuxAssetId(value: string): boolean {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return false;
+  if (UUID_REGEX.test(trimmed)) return true;
+  if (/^asset_[A-Za-z0-9_-]+$/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Validate and resolve a Mux Playback ID (with optional signed token) or direct stream URL.
+ */
+export function resolveStreamSource(
+  input: string,
+  optionalToken?: string
+): StreamResolutionResult {
+  const trimmed = (input || '').trim();
+  const cleanOptionalToken = (optionalToken || '').trim();
+
+  if (!trimmed) {
     return {
-      url: `https://stream.mux.com/${trimmed}.m3u8`,
+      url: '',
+      type: 'video/mp4',
+      isMux: false,
+      valid: false,
+      error: 'Please enter a valid Mux Playback ID or video stream URL.',
+    };
+  }
+
+  // Reject whitespace inside raw IDs or URLs
+  if (/\s/.test(trimmed)) {
+    return {
+      url: '',
+      type: 'video/mp4',
+      isMux: false,
+      valid: false,
+      error: 'Input contains spaces. Enter a clean Playback ID or full stream URL.',
+    };
+  }
+
+  // Reject Mux Asset IDs cleanly before treating them as Playback IDs
+  if (isLikelyMuxAssetId(trimmed)) {
+    return {
+      url: '',
       type: 'application/x-mpegURL',
       isMux: true,
+      valid: false,
+      isAssetId: true,
+      error:
+        'This looks like a Mux Asset ID (UUID), not a Playback ID. Please copy the Playback ID from your Mux Asset playback settings.',
     };
   }
 
-  // If already an HLS URL (.m3u8)
-  if (trimmed.includes('.m3u8')) {
+  // Check if input is a raw Playback ID (optionally followed by ?token=...)
+  const hasProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed);
+  if (!hasProtocol && !trimmed.includes('/')) {
+    const [rawId, rawQuery = ''] = trimmed.split('?');
+    if (isLikelyMuxAssetId(rawId)) {
+      return {
+        url: '',
+        type: 'application/x-mpegURL',
+        isMux: true,
+        valid: false,
+        isAssetId: true,
+        error:
+          'This looks like a Mux Asset ID (UUID), not a Playback ID. Please copy the Playback ID from your Mux Asset playback settings.',
+      };
+    }
+
+    if (MUX_PLAYBACK_ID_REGEX.test(rawId)) {
+      const params = new URLSearchParams(rawQuery);
+      if (cleanOptionalToken && !params.has('token')) {
+        params.set('token', cleanOptionalToken);
+      }
+
+      const tokenVal = params.get('token') || undefined;
+      if (tokenVal) {
+        const jwtInfo = inspectJwtToken(tokenVal);
+        if (jwtInfo.expired) {
+          return {
+            url: '',
+            type: 'application/x-mpegURL',
+            isMux: true,
+            valid: false,
+            playbackId: rawId,
+            token: tokenVal,
+            tokenExpired: true,
+            error: `Signed Mux playback token expired on ${new Date(
+              jwtInfo.expiresAt!
+            ).toLocaleString()}. Generate a new token and try again.`,
+          };
+        }
+      }
+
+      const queryString = params.toString();
+      const resolvedUrl = `https://stream.mux.com/${rawId}.m3u8${
+        queryString ? `?${queryString}` : ''
+      }`;
+
+      return {
+        url: resolvedUrl,
+        type: 'application/x-mpegURL',
+        isMux: true,
+        valid: true,
+        playbackId: rawId,
+        token: tokenVal,
+      };
+    }
+
     return {
-      url: trimmed,
+      url: '',
+      type: 'video/mp4',
+      isMux: false,
+      valid: false,
+      error:
+        'Invalid Playback ID or URL. Enter an alphanumeric Mux Playback ID or an https:// stream URL (.m3u8, .mp4, or .webm).',
+    };
+  }
+
+  // Full URL parsing and strict protocol validation
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return {
+      url: '',
+      type: 'video/mp4',
+      isMux: false,
+      valid: false,
+      error: 'Invalid stream URL format. Use a complete https:// URL or a Mux Playback ID.',
+    };
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return {
+      url: '',
+      type: 'video/mp4',
+      isMux: false,
+      valid: false,
+      error: `Unsupported URL protocol (${parsed.protocol}). Only HTTP and HTTPS streams are supported.`,
+    };
+  }
+
+  // Append optional signed token if provided in modal
+  if (cleanOptionalToken && !parsed.searchParams.has('token')) {
+    parsed.searchParams.set('token', cleanOptionalToken);
+  }
+
+  const isMuxHost = parsed.hostname === 'stream.mux.com' || parsed.hostname.endsWith('.mux.com');
+  const pathname = parsed.pathname.toLowerCase();
+
+  // Check Mux URL path for accidental Asset ID usage
+  let extractedPlaybackId: string | undefined;
+  if (isMuxHost) {
+    const pathSlug = parsed.pathname.replace(/^\/+/, '').split('/')[0]?.replace(/\.m3u8$/i, '');
+    if (pathSlug && isLikelyMuxAssetId(pathSlug)) {
+      return {
+        url: '',
+        type: 'application/x-mpegURL',
+        isMux: true,
+        valid: false,
+        isAssetId: true,
+        error:
+          'The Mux URL contains an Asset ID (UUID) instead of a Playback ID. Replace it with a valid Mux Playback ID.',
+      };
+    }
+    if (pathSlug) {
+      extractedPlaybackId = pathSlug;
+    }
+  }
+
+  // Check signed token expiration if present
+  const tokenParam = parsed.searchParams.get('token') || undefined;
+  if (tokenParam) {
+    const jwtInfo = inspectJwtToken(tokenParam);
+    if (jwtInfo.expired) {
+      return {
+        url: '',
+        type: 'application/x-mpegURL',
+        isMux: isMuxHost,
+        valid: false,
+        playbackId: extractedPlaybackId,
+        token: tokenParam,
+        tokenExpired: true,
+        error: `Signed playback token expired on ${new Date(
+          jwtInfo.expiresAt!
+        ).toLocaleString()}. Refresh the signed URL and try again.`,
+      };
+    }
+  }
+
+  const extMatch = pathname.match(/\.[a-z0-9]+$/i);
+  const ext = extMatch ? extMatch[0].toLowerCase() : '';
+
+  if (ext && UNSUPPORTED_EXTENSIONS.has(ext)) {
+    return {
+      url: '',
+      type: 'video/mp4',
+      isMux: isMuxHost,
+      valid: false,
+      error: `Unsupported media format (${ext}). Provide an HLS (.m3u8), MP4 (.mp4), or WebM (.webm) stream.`,
+    };
+  }
+
+  if (ext === '.m3u8' || (isMuxHost && !ext)) {
+    const finalUrl =
+      isMuxHost && !ext
+        ? `https://stream.mux.com/${extractedPlaybackId}.m3u8${parsed.search}`
+        : parsed.toString();
+    return {
+      url: finalUrl,
       type: 'application/x-mpegURL',
-      isMux: trimmed.includes('mux.com'),
+      isMux: isMuxHost,
+      valid: true,
+      playbackId: extractedPlaybackId,
+      token: tokenParam,
     };
   }
 
-  // WebM
-  if (trimmed.includes('.webm')) {
+  if (ext === '.webm') {
     return {
-      url: trimmed,
+      url: parsed.toString(),
       type: 'video/webm',
       isMux: false,
+      valid: true,
     };
   }
 
-  // Default MP4 or direct video stream
+  if (ext === '.ogg' || ext === '.ogv') {
+    return {
+      url: parsed.toString(),
+      type: 'video/ogg',
+      isMux: false,
+      valid: true,
+    };
+  }
+
+  // .mp4, .m4v, or direct CDN URL without file extension
   return {
-    url: trimmed,
+    url: parsed.toString(),
     type: 'video/mp4',
-    isMux: trimmed.includes('mux.com'),
+    isMux: isMuxHost,
+    valid: true,
+    token: tokenParam,
   };
+}
+
+/**
+ * Determine whether a stream should use the Video.js SPF HLS adapter.
+ */
+export function isHlsStreamSource(url: string, streamType?: string): boolean {
+  if (streamType === 'application/x-mpegURL' || streamType === 'application/vnd.apple.mpegurl') {
+    return true;
+  }
+  const cleanPath = (url || '').split('?')[0].split('#')[0].toLowerCase();
+  return cleanPath.endsWith('.m3u8');
 }
 
 /**
@@ -85,7 +370,6 @@ export function resolveStreamSource(input: string): { url: string; type: string;
  */
 export function getChapterForTime(currentTime: number, chapters: Chapter[]): Chapter | null {
   if (!chapters || chapters.length === 0) return null;
-  // sort chapters by time ascending
   const sorted = [...chapters].sort((a, b) => a.time - b.time);
   let active: Chapter | null = null;
   for (const ch of sorted) {
@@ -106,12 +390,12 @@ export function getAspectRatioFactor(ratio: AspectRatio): number {
     case '2.39:1':
       return 2.39;
     case '21:9':
-      return 21 / 9; // ~2.333
+      return 21 / 9;
     case '1.43:1':
-      return 1.43; // IMAX 70mm
+      return 1.43;
     case '16:9':
     default:
-      return 16 / 9; // ~1.777
+      return 16 / 9;
   }
 }
 

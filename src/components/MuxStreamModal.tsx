@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Play, Radio, Check } from 'lucide-react';
+import { X, Play, Radio, Check, Film } from 'lucide-react';
 import { CINEMA_REELS, FilmReel } from '../data/cinemaReels';
 import { resolveStreamSource } from '../utils/player-math';
 
@@ -20,47 +20,56 @@ export function MuxStreamModal({
 }: MuxStreamModalProps) {
   const [activeTab, setActiveTab] = useState<'catalog' | 'mux' | 'custom'>('catalog');
   const [muxPlaybackId, setMuxPlaybackId] = useState('');
+  const [muxToken, setMuxToken] = useState('');
   const [customStreamUrl, setCustomStreamUrl] = useState('');
-  const [customTitle, setCustomTitle] = useState('Custom Stream Source');
+  const [customTitle, setCustomTitle] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   if (!isOpen) return null;
 
   const handleApplyMux = (e: React.FormEvent) => {
     e.preventDefault();
-    const resolved = resolveStreamSource(muxPlaybackId);
-    if (!resolved.url) {
-      setStatusMessage('Please enter a valid Mux Playback ID or Stream URL.');
+    const resolved = resolveStreamSource(muxPlaybackId, muxToken);
+    if (!resolved.valid || !resolved.url) {
+      setStatusMessage(
+        resolved.error || 'Please enter a valid Mux Playback ID or Mux HLS stream URL.'
+      );
       return;
     }
 
+    const displayId = resolved.playbackId || muxPlaybackId.trim();
     const newFilm: FilmReel = {
       id: `mux-${Date.now()}`,
-      title: customTitle || 'Mux Hosted Cinema',
-      subtitle: `Mux Public Playback ID: ${muxPlaybackId.trim().slice(0, 16)}...`,
+      title: customTitle.trim() || 'Mux Hosted Cinema',
+      subtitle: displayId
+        ? `Mux Playback ID: ${displayId.slice(0, 18)}${resolved.token ? ' (Signed)' : ''}`
+        : 'Mux Adaptive Stream',
       director: 'Mux Video Infrastructure',
       durationString: 'Live / VOD',
       aspectRatio: '16:9',
       colorGrade: 'pristine',
-      ambientGlowColor: 'rgba(255, 112, 79, 0.25)',
-      thumbnail: activeFilm.thumbnail,
+      ambientGlowColor: 'rgba(103, 212, 255, 0.22)',
+      thumbnail: '',
       streamUrl: resolved.url,
       streamType: resolved.type,
       isMux: true,
-      muxPlaybackId: muxPlaybackId.trim(),
-      synopsis: 'Direct high-fidelity adaptive bitrate stream provisioned through Mux Video infrastructure and rendered inside NEXUS ONE The Living Frame.',
+      muxPlaybackId: displayId,
+      synopsis:
+        'Adaptive bitrate stream provisioned through Mux Video infrastructure and rendered inside NEXUS ONE The Living Frame.',
       specs: {
         resolution: 'Adaptive Multi-Bitrate HLS',
-        codec: 'H.264 / AAC (HLS v4)',
+        codec: 'H.264 / AAC (HLS)',
         audio: 'Stereo Master 48kHz',
-        fps: 'Native Stream FPS',
-        colorSpace: 'sRGB / Rec.709',
+        fps: 'Native Stream',
+        colorSpace: 'Rec.709',
       },
       chapters: [
         { id: 'm1', time: 0, title: 'Stream Start', description: 'Stream initialized via Mux Video.' },
       ],
     };
 
+    setStatusMessage(null);
     onLoadCustomStream(newFilm);
     onClose();
   };
@@ -68,37 +77,42 @@ export function MuxStreamModal({
   const handleApplyCustomUrl = (e: React.FormEvent) => {
     e.preventDefault();
     const resolved = resolveStreamSource(customStreamUrl);
-    if (!resolved.url) {
-      setStatusMessage('Please enter a valid video stream URL (.mp4, .m3u8, or .webm).');
+    if (!resolved.valid || !resolved.url) {
+      setStatusMessage(
+        resolved.error || 'Please enter a valid video stream URL (.mp4, .m3u8, or .webm).'
+      );
       return;
     }
 
+    const urlSlug = resolved.url.split('?')[0].split('/').pop() || 'Custom Feed';
     const newFilm: FilmReel = {
       id: `custom-${Date.now()}`,
-      title: customTitle || 'External Cinematic Stream',
-      subtitle: resolved.url.split('/').pop() || 'Custom Feed',
-      director: 'External Feed',
-      durationString: 'Dynamic',
+      title: customTitle.trim() || 'External Cinematic Stream',
+      subtitle: urlSlug,
+      director: 'External Stream',
+      durationString: 'Stream',
       aspectRatio: '16:9',
       colorGrade: 'pristine',
-      ambientGlowColor: 'rgba(255, 112, 79, 0.25)',
-      thumbnail: activeFilm.thumbnail,
+      ambientGlowColor: 'rgba(103, 212, 255, 0.22)',
+      thumbnail: '',
       streamUrl: resolved.url,
       streamType: resolved.type,
       isMux: resolved.isMux,
-      synopsis: 'Custom user-provided video stream initialized through Video.js v10 media engine.',
+      muxPlaybackId: resolved.playbackId,
+      synopsis: 'Custom user-provided video stream initialized through the Video.js cinema player.',
       specs: {
-        resolution: 'Direct Web Stream',
+        resolution: resolved.type === 'application/x-mpegURL' ? 'Adaptive HLS Stream' : 'Direct Web Stream',
         codec: resolved.type,
         audio: 'Web Audio Standard',
-        fps: 'Stream Native',
-        colorSpace: 'Standard Video',
+        fps: 'Native Stream',
+        colorSpace: 'Rec.709',
       },
       chapters: [
-        { id: 'c1', time: 0, title: 'Stream Inception', description: 'User injected video feed.' },
+        { id: 'c1', time: 0, title: 'Stream Start', description: 'Direct stream playback.' },
       ],
     };
 
+    setStatusMessage(null);
     onLoadCustomStream(newFilm);
     onClose();
   };
@@ -108,25 +122,29 @@ export function MuxStreamModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="stream-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/82 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-2xl bg-[#141920] border border-[rgba(197,203,210,0.14)] rounded-2xl shadow-2xl overflow-hidden p-6 text-[#F1F0EA] max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-2xl cinema-glass border border-[rgba(226,232,240,0.16)] rounded-2xl shadow-2xl overflow-hidden p-6 text-[#FFFFFF] max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-white/5">
+        <div className="flex items-start justify-between pb-4 border-b border-white/10">
           <div>
-            <span className="text-[10px] font-mono tracking-widest text-[#FF704F] uppercase block mb-1">
-              STREAM ARCHITECTURE & MUX VIDEO PIPELINE
+            <span className="text-xs font-medium text-[#67D4FF] block mb-1">
+              Stream Switcher
             </span>
-            <h2 id="stream-modal-title" className="text-xl font-bold font-['Syne',sans-serif] tracking-tight">
-              Stream Source & Film Reel Selector
+            <h2 id="stream-modal-title" className="text-xl font-bold font-['Syne',sans-serif] tracking-tight text-[#FFFFFF]">
+              Select Film or Connect Stream
             </h2>
-            <p className="text-xs text-[#C5CBD2]/75 mt-1">
-              Switch between curated master reels, input your public Mux Playback ID, or load custom HLS/MP4 streams.
+            <p className="text-xs text-[#CBD5E1]/80 mt-1">
+              Choose a curated master reel, paste a Mux Playback ID, or load a direct HLS/MP4 stream.
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-white/10 text-[#C5CBD2]/60 hover:text-[#F1F0EA] transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-[#94A3B8] hover:text-[#FFFFFF] transition-colors cursor-pointer"
             aria-label="Close stream selector modal"
           >
             <X className="w-5 h-5" />
@@ -134,33 +152,36 @@ export function MuxStreamModal({
         </div>
 
         {/* Tab Selection */}
-        <div className="flex gap-2 p-1 bg-[#080A0D] rounded-xl my-4 border border-white/5">
+        <div className="flex gap-1.5 p-1 bg-[#05070B] rounded-xl my-4 border border-white/10">
           <button
+            type="button"
             onClick={() => { setActiveTab('catalog'); setStatusMessage(null); }}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === 'catalog'
-                ? 'bg-[#FF704F] text-white shadow-lg shadow-[#FF704F]/20 font-semibold'
-                : 'text-[#C5CBD2]/70 hover:text-white'
+                ? 'bg-[#67D4FF] text-[#05070B] shadow-lg shadow-[#67D4FF]/15 font-semibold'
+                : 'text-[#CBD5E1] hover:text-[#FFFFFF]'
             }`}
           >
-            Curated 4K Cinema Reels
+            Cinema Library
           </button>
           <button
+            type="button"
             onClick={() => { setActiveTab('mux'); setStatusMessage(null); }}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === 'mux'
-                ? 'bg-[#FF704F] text-white shadow-lg shadow-[#FF704F]/20 font-semibold'
-                : 'text-[#C5CBD2]/70 hover:text-white'
+                ? 'bg-[#67D4FF] text-[#05070B] shadow-lg shadow-[#67D4FF]/15 font-semibold'
+                : 'text-[#CBD5E1] hover:text-[#FFFFFF]'
             }`}
           >
             Mux Playback ID
           </button>
           <button
+            type="button"
             onClick={() => { setActiveTab('custom'); setStatusMessage(null); }}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === 'custom'
-                ? 'bg-[#FF704F] text-white shadow-lg shadow-[#FF704F]/20 font-semibold'
-                : 'text-[#C5CBD2]/70 hover:text-white'
+                ? 'bg-[#67D4FF] text-[#05070B] shadow-lg shadow-[#67D4FF]/15 font-semibold'
+                : 'text-[#CBD5E1] hover:text-[#FFFFFF]'
             }`}
           >
             Custom Stream URL
@@ -170,159 +191,205 @@ export function MuxStreamModal({
         {/* Tab Content */}
         <div className="overflow-y-auto flex-1 pr-1 space-y-4">
           {activeTab === 'catalog' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {CINEMA_REELS.map((film) => {
                 const isSelected = activeFilm.id === film.id;
+                const imgFailed = failedImages[film.id];
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={film.id}
                     onClick={() => {
+                      setStatusMessage(null);
                       onSelectFilm(film);
                       onClose();
                     }}
                     className={`cursor-pointer rounded-xl p-3 border transition-all text-left relative group overflow-hidden ${
                       isSelected
-                        ? 'border-[#FF704F] bg-[#FF704F]/10'
-                        : 'border-white/10 bg-[#080A0D] hover:border-white/25 hover:bg-[#181E27]'
+                        ? 'border-[#67D4FF] bg-[#67D4FF]/10'
+                        : 'border-white/10 bg-[#05070B]/80 hover:border-[#67D4FF]/45 hover:bg-[#111826]'
                     }`}
                   >
                     <div className="aspect-video w-full rounded-lg overflow-hidden relative mb-2.5 bg-black">
-                      <img
-                        src={film.thumbnail}
-                        alt={film.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-mono text-[#F1F0EA]">
-                        <span className="bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm border border-white/10">
-                          {film.aspectRatio}
-                        </span>
-                        <span className="text-[#FF704F] font-bold tabular-nums">{film.durationString}</span>
+                      {!imgFailed ? (
+                        <img
+                          src={film.thumbnail}
+                          alt={film.title}
+                          onError={() =>
+                            setFailedImages((prev) => ({ ...prev, [film.id]: true }))
+                          }
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#0B0F17]">
+                          <Film className="w-5 h-5 text-[#67D4FF]" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#05070B]/90 via-transparent to-transparent" />
+                      <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-mono text-[#FFFFFF]">
+                        <span className="text-[#CBD5E1]">{film.aspectRatio}</span>
+                        <span className="text-[#67D4FF] font-semibold tabular-nums">{film.durationString}</span>
                       </div>
                       {isSelected && (
-                        <div className="absolute top-2 right-2 bg-[#FF704F] text-white p-1 rounded-full shadow-lg">
-                          <Check className="w-3.5 h-3.5" />
+                        <div className="absolute top-2 right-2 bg-[#67D4FF] text-[#05070B] p-1 rounded-full shadow-lg">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </div>
                       )}
                     </div>
 
-                    <h3 className="font-['Syne',sans-serif] font-bold text-sm text-[#F1F0EA] group-hover:text-[#FF704F] transition-colors">
+                    <h3 className="font-['Syne',sans-serif] font-bold text-sm text-[#FFFFFF] group-hover:text-[#67D4FF] transition-colors truncate">
                       {film.title}
                     </h3>
-                    <p className="text-xs text-[#C5CBD2]/60 line-clamp-1 mt-0.5">{film.subtitle}</p>
-                    <p className="text-[11px] font-mono text-[#C5CBD2]/40 mt-1">{film.specs.resolution.split(' ')[0]} · {film.specs.codec.split(' ')[0]}</p>
-                  </div>
+                    <p className="text-xs text-[#CBD5E1]/75 line-clamp-1 mt-0.5">{film.subtitle}</p>
+                    <p className="text-[11px] text-[#94A3B8] mt-1 truncate">
+                      {film.director}
+                    </p>
+                  </button>
                 );
               })}
             </div>
           )}
 
           {activeTab === 'mux' && (
-            <form onSubmit={handleApplyMux} className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#080A0D] border border-white/10 text-xs text-[#C5CBD2]/75 space-y-2">
-                <div className="flex items-center gap-2 text-[#FF704F] font-semibold text-sm">
+            <form onSubmit={handleApplyMux} noValidate className="space-y-4">
+              <div className="p-4 rounded-xl bg-[#05070B] border border-white/10 text-xs text-[#CBD5E1]/80 space-y-2">
+                <div className="flex items-center gap-2 text-[#67D4FF] font-semibold text-sm">
                   <Radio className="w-4 h-4" />
-                  <span>Native Mux Video Streaming</span>
+                  <span>Mux Adaptive HLS Streaming</span>
                 </div>
                 <p>
-                  Paste your public Mux Playback ID below. NEXUS ONE automatically resolves the adaptive HLS manifest (`https://stream.mux.com/&#123;PLAYBACK_ID&#125;.m3u8`) and streams via Video.js v10.
+                  Paste a Mux Playback ID (not an Asset ID) or full <span className="font-mono text-[#FFFFFF]">stream.mux.com</span> HLS URL. Signed streams are supported via an optional playback JWT token.
                 </p>
-                <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-[#C5CBD2]/50">
-                  <span>Demo ID available:</span>
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-[#94A3B8]">
+                  <span>Sample Playback ID:</span>
                   <button
                     type="button"
-                    onClick={() => setMuxPlaybackId('uNbxnGLKJ00yfbijDO8COxTOyVKT01xpxW')}
-                    className="text-[#FF704F] hover:underline"
+                    onClick={() => {
+                      setMuxPlaybackId('uNbxnGLKJ00yfbijDO8COxTOyVKT01xpxW');
+                      setStatusMessage(null);
+                    }}
+                    className="font-mono text-[#67D4FF] hover:underline cursor-pointer"
                   >
-                    uNbxnGLKJ00yfbijDO8COxTOyVKT01xpxW (Click to fill)
+                    uNbxnGLKJ00yfbijDO8COxTOyVKT01xpxW (Use sample)
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#C5CBD2]/80 mb-1.5">
+                <label htmlFor="mux-id-input" className="block text-xs font-medium text-[#CBD5E1] mb-1.5">
                   Mux Playback ID or Stream URL
                 </label>
                 <input
+                  id="mux-id-input"
                   type="text"
                   value={muxPlaybackId}
-                  onChange={(e) => setMuxPlaybackId(e.target.value)}
+                  onChange={(e) => {
+                    setMuxPlaybackId(e.target.value);
+                    if (statusMessage) setStatusMessage(null);
+                  }}
                   placeholder="e.g. uNbxnGLKJ00yfbijDO8COxTOyVKT01xpxW"
-                  className="w-full bg-[#080A0D] border border-white/15 focus:border-[#FF704F] rounded-xl px-4 py-2.5 text-sm font-mono text-[#F1F0EA] placeholder:text-[#C5CBD2]/30 outline-none transition-colors"
+                  className="w-full bg-[#05070B] border border-white/15 focus:border-[#67D4FF] rounded-xl px-4 py-2.5 text-sm font-mono text-[#FFFFFF] placeholder:text-[#94A3B8]/40 outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#C5CBD2]/80 mb-1.5">
+                <label htmlFor="mux-token-input" className="block text-xs font-medium text-[#CBD5E1] mb-1.5">
+                  Signed Playback Token (Optional JWT)
+                </label>
+                <input
+                  id="mux-token-input"
+                  type="text"
+                  value={muxToken}
+                  onChange={(e) => {
+                    setMuxToken(e.target.value);
+                    if (statusMessage) setStatusMessage(null);
+                  }}
+                  placeholder="Paste signed JWT token for private/signed Mux assets"
+                  className="w-full bg-[#05070B] border border-white/15 focus:border-[#67D4FF] rounded-xl px-4 py-2 text-xs font-mono text-[#FFFFFF] placeholder:text-[#94A3B8]/40 outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="mux-title-input" className="block text-xs font-medium text-[#CBD5E1] mb-1.5">
                   Stream Title (Optional)
                 </label>
                 <input
+                  id="mux-title-input"
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="e.g. Blade Runner 2049 Master Reel"
-                  className="w-full bg-[#080A0D] border border-white/15 focus:border-[#FF704F] rounded-xl px-4 py-2 text-sm text-[#F1F0EA] placeholder:text-[#C5CBD2]/30 outline-none transition-colors"
+                  placeholder="e.g. Master Cinema Stream"
+                  className="w-full bg-[#05070B] border border-white/15 focus:border-[#67D4FF] rounded-xl px-4 py-2 text-sm text-[#FFFFFF] placeholder:text-[#94A3B8]/40 outline-none transition-colors"
                 />
               </div>
 
               {statusMessage && (
-                <p className="text-xs text-[#FF704F] font-mono">{statusMessage}</p>
+                <p role="alert" className="text-xs text-[#FCA5A5] bg-[#7F1D1D]/30 border border-[#EF4444]/35 rounded-lg px-3 py-2 font-medium">
+                  {statusMessage}
+                </p>
               )}
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-[#FF704F] text-white font-semibold text-xs rounded-xl hover:bg-[#FF704F]/90 transition-all shadow-lg shadow-[#FF704F]/20 flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[#67D4FF] text-[#05070B] font-semibold text-xs rounded-xl hover:bg-[#8CE0FF] transition-all shadow-lg shadow-[#67D4FF]/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
-                <span>Initialize Mux Stream into Living Frame</span>
+                <span>Load Mux Stream</span>
               </button>
             </form>
           )}
 
           {activeTab === 'custom' && (
-            <form onSubmit={handleApplyCustomUrl} className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#080A0D] border border-white/10 text-xs text-[#C5CBD2]/75 space-y-1">
-                <p className="font-semibold text-sm text-[#F1F0EA]">Direct Media Stream</p>
-                <p>Support for direct HTTP/HTTPS `.mp4`, `.m3u8` (HLS), or `.webm` video streams.</p>
+            <form onSubmit={handleApplyCustomUrl} noValidate className="space-y-4">
+              <div className="p-4 rounded-xl bg-[#05070B] border border-white/10 text-xs text-[#CBD5E1]/80 space-y-1">
+                <p className="font-semibold text-sm text-[#FFFFFF]">Direct Media Stream</p>
+                <p>Supports HTTP/HTTPS .m3u8 (Adaptive HLS), .mp4 (H.264/AAC), and .webm streams.</p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#C5CBD2]/80 mb-1.5">
+                <label htmlFor="custom-url-input" className="block text-xs font-medium text-[#CBD5E1] mb-1.5">
                   Direct Video Stream URL
                 </label>
                 <input
+                  id="custom-url-input"
                   type="url"
                   value={customStreamUrl}
-                  onChange={(e) => setCustomStreamUrl(e.target.value)}
-                  placeholder="https://example.com/stream/video.mp4"
-                  className="w-full bg-[#080A0D] border border-white/15 focus:border-[#FF704F] rounded-xl px-4 py-2.5 text-sm font-mono text-[#F1F0EA] placeholder:text-[#C5CBD2]/30 outline-none transition-colors"
+                  onChange={(e) => {
+                    setCustomStreamUrl(e.target.value);
+                    if (statusMessage) setStatusMessage(null);
+                  }}
+                  placeholder="https://example.com/stream/video.m3u8"
+                  className="w-full bg-[#05070B] border border-white/15 focus:border-[#67D4FF] rounded-xl px-4 py-2.5 text-sm font-mono text-[#FFFFFF] placeholder:text-[#94A3B8]/40 outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#C5CBD2]/80 mb-1.5">
-                  Film Title
+                <label htmlFor="custom-title-input" className="block text-xs font-medium text-[#CBD5E1] mb-1.5">
+                  Film Title (Optional)
                 </label>
                 <input
+                  id="custom-title-input"
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   placeholder="e.g. Symphony of the Spheres"
-                  className="w-full bg-[#080A0D] border border-white/15 focus:border-[#FF704F] rounded-xl px-4 py-2 text-sm text-[#F1F0EA] placeholder:text-[#C5CBD2]/30 outline-none transition-colors"
+                  className="w-full bg-[#05070B] border border-white/15 focus:border-[#67D4FF] rounded-xl px-4 py-2 text-sm text-[#FFFFFF] placeholder:text-[#94A3B8]/40 outline-none transition-colors"
                 />
               </div>
 
               {statusMessage && (
-                <p className="text-xs text-[#FF704F] font-mono">{statusMessage}</p>
+                <p role="alert" className="text-xs text-[#FCA5A5] bg-[#7F1D1D]/30 border border-[#EF4444]/35 rounded-lg px-3 py-2 font-medium">
+                  {statusMessage}
+                </p>
               )}
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-[#FF704F] text-white font-semibold text-xs rounded-xl hover:bg-[#FF704F]/90 transition-all shadow-lg shadow-[#FF704F]/20 flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[#67D4FF] text-[#05070B] font-semibold text-xs rounded-xl hover:bg-[#8CE0FF] transition-all shadow-lg shadow-[#67D4FF]/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
-                <span>Load External Stream</span>
+                <span>Load Stream</span>
               </button>
             </form>
           )}

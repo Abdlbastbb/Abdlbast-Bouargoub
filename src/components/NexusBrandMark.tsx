@@ -3,13 +3,12 @@ import React from 'react';
 interface NexusBrandMarkProps {
   variant?: 'emblem' | 'full' | 'signature';
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'header';
 }
 
 /**
  * NEXUS ONE Signature Geometric Brand Mark
- * Inspired by cinematic framing, anamorphic aperture geometry, dimensional space,
- * and digital immersion.
+ * Original artwork, proportions, and colors preserved permanently.
  */
 export function NexusBrandMark({
   variant = 'full',
@@ -17,22 +16,43 @@ export function NexusBrandMark({
   size = 'md',
 }: NexusBrandMarkProps) {
   const sizeMap = {
-    sm: { icon: 20, text: 'text-xs', sub: 'text-[9px]' },
-    md: { icon: 26, text: 'text-sm md:text-base', sub: 'text-[9px] md:text-[10px]' },
-    lg: { icon: 34, text: 'text-lg md:text-xl', sub: 'text-[10px] md:text-[11px]' },
+    sm: {
+      iconClass: 'w-6 h-6',
+      text: 'text-xs',
+      sub: 'text-[9px]',
+      gap: 'gap-2',
+    },
+    md: {
+      iconClass: 'w-7 h-7 sm:w-8 sm:h-8',
+      text: 'text-sm md:text-base',
+      sub: 'text-[9px] md:text-[10px]',
+      gap: 'gap-2.5 sm:gap-3',
+    },
+    lg: {
+      iconClass: 'w-9 h-9 md:w-10 md:h-10',
+      text: 'text-lg md:text-xl',
+      sub: 'text-[10px] md:text-[11px]',
+      gap: 'gap-3',
+    },
+    // ~40% larger header presentation (36px mobile -> 40px desktop) with crisp readability
+    header: {
+      iconClass: 'w-9 h-9 sm:w-10 sm:h-10',
+      text: 'text-[15px] min-[420px]:text-[17px] sm:text-[20px] md:text-[21px]',
+      sub: 'text-[9px] sm:text-[10px]',
+      gap: 'gap-2.5 sm:gap-3.5',
+    },
   };
 
   const currentSize = sizeMap[size];
 
-  // Precision Geometric Emblem
+  // Precision Geometric Emblem (Original artwork & colors preserved strictly)
   const Emblem = (
     <svg
-      width={currentSize.icon}
-      height={currentSize.icon}
       viewBox="0 0 36 36"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0 transition-transform duration-300 group-hover:scale-105"
+      shapeRendering="geometricPrecision"
+      className={`${currentSize.iconClass} shrink-0 block`}
       aria-hidden="true"
     >
       {/* Outer Anamorphic Viewfinder Framing Reticles (Titanium Silver) */}
@@ -74,7 +94,7 @@ export function NexusBrandMark({
         strokeWidth="1.5"
         strokeLinejoin="round"
         fill="#141920"
-        fillOpacity="0.75"
+        fillOpacity="0.88"
       />
 
       {/* Inner Dimensional Facets */}
@@ -112,25 +132,25 @@ export function NexusBrandMark({
   );
 
   if (variant === 'emblem') {
-    return <div className={`inline-flex items-center ${className}`}>{Emblem}</div>;
+    return <div className={`inline-flex items-center shrink-0 ${className}`}>{Emblem}</div>;
   }
 
   return (
-    <div className={`inline-flex items-center gap-2.5 sm:gap-3 group select-none ${className}`}>
+    <div className={`inline-flex items-center ${currentSize.gap} select-none shrink-0 ${className}`}>
       {Emblem}
 
       <div className="flex flex-col justify-center">
-        <div className="flex items-center tracking-tight leading-none">
-          <span className={`font-['Syne',sans-serif] font-black uppercase text-[#F1F0EA] ${currentSize.text} tracking-wider`}>
+        <div className="flex items-center tracking-tight leading-none whitespace-nowrap">
+          <span className={`font-['Syne',sans-serif] font-black uppercase text-[#F1F0EA] ${currentSize.text} tracking-[0.06em]`}>
             NEXUS
           </span>
-          <span className={`font-['Syne',sans-serif] font-black uppercase text-[#FF704F] ${currentSize.text} tracking-wider ml-1.5`}>
+          <span className={`font-['Syne',sans-serif] font-black uppercase text-[#FF704F] ${currentSize.text} tracking-[0.06em] ml-1.5`}>
             ONE
           </span>
         </div>
 
         {variant === 'signature' && (
-          <span className={`font-mono uppercase tracking-[0.22em] text-[#C5CBD2]/60 ${currentSize.sub} mt-0.5 whitespace-nowrap`}>
+          <span className={`font-mono uppercase tracking-[0.22em] text-[#C5CBD2]/75 ${currentSize.sub} mt-1 whitespace-nowrap hidden sm:block`}>
             CINEMATIC INTELLIGENCE
           </span>
         )}
